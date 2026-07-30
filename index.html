@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 춘천마임축제</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.577.0"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#E8650A',
+            secondary: '#F5A623',
+            cream: '#FDF6EC',
+            darkbrown: '#3D2B1F',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    .screen-container { background: #FDF6EC; min-height: 100vh; }
+    .phone-frame {
+      background: #FDF6EC;
+      border-radius: 2rem;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #E8650A, #F5A623, #E8650A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #E8650A, #F5A623);
+      color: white;
+      border-radius: 1rem;
+      padding: 0.875rem 2rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      width: 100%;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(232, 101, 10, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(232, 101, 10, 0.5);
+    }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(232,101,10,0.2);
+    }
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      animation: fall 3s linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+    .slide-in { animation: slideIn 0.4s ease; }
+    @keyframes slideIn {
+      from { transform: translateX(30px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tag-filter {
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 9999px;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .tag-filter.active { background: #E8650A; color: white; }
+    .tag-filter:not(.active) { background: #f0e8df; color: #6b5744; }
+
+    /* 폰 프레임 내부 스크롤 영역 */
+    .phone-scroll-area {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .phone-scroll-area::-webkit-scrollbar { width: 3px; }
+    .phone-scroll-area::-webkit-scrollbar-track { background: #f0e8df; }
+    .phone-scroll-area::-webkit-scrollbar-thumb { background: #E8650A; border-radius: 2px; }
+
+    /* 모바일 풀스크린 스크롤 */
+    .mobile-scroll {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mobile-scroll::-webkit-scrollbar { width: 4px; }
+    .mobile-scroll::-webkit-scrollbar-track { background: #f0e8df; }
+    .mobile-scroll::-webkit-scrollbar-thumb { background: #E8650A; border-radius: 2px; }
+
+    /* Leaflet 지도 */
+    .festival-map-container {
+      width: 100%;
+      height: 300px;
+      border-radius: 1rem;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+    .festival-map-container .leaflet-container {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 1rem;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #3D2B1F !important;
+      color: white !important;
+      border-radius: 12px !important;
+      border: 2px solid #E8650A !important;
+      box-shadow: 0 8px 24px rgba(232,101,10,0.4) !important;
+    }
+    .leaflet-popup-tip { background: #3D2B1F !important; }
+    .leaflet-popup-content {
+      margin: 10px 14px !important;
+      font-family: 'Noto Sans KR', sans-serif !important;
+    }
+    .custom-marker-icon { background: transparent; border: none; }
+
+    /* 네비바 - 폰 프레임 안에서 absolute */
+    .bottom-nav-inner {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: rgba(253,246,236,0.97);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #f0e8df;
+      padding: 8px 16px 12px;
+    }
+    /* 네비바 - 모바일 풀스크린에서 fixed */
+    .bottom-nav-fixed {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: rgba(253,246,236,0.97);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #f0e8df;
+      padding: 8px 16px 12px;
+    }
+  </style>
+</head>
+<body style="background: #1a0f0a;">
+  <div id="root"></div>
+  <script type="text/babel">
+    // Lucide 아이콘 컴포넌트 헬퍼
+    const createLucideIcon = (iconName) => {
+      return ({ className = '', size = 24, strokeWidth = 2, ...props }) => {
+        const ref = React.useRef(null);
+        React.useEffect(() => {
+          if (ref.current && typeof lucide !== 'undefined' && lucide[iconName]) {
+            ref.current.innerHTML = '';
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            const iconNode = lucide.createElement(lucide[iconName]);
+            svg.innerHTML = iconNode.innerHTML;
+            Array.from(iconNode.attributes).forEach(attr => {
+              svg.setAttribute(attr.name, attr.value);
+            });
+            if (className) svg.setAttribute('class', className);
+            svg.setAttribute('width', size);
+            svg.setAttribute('height', size);
+            svg.setAttribute('stroke-width', strokeWidth);
+            ref.current.appendChild(svg);
+          }
+        }, [className, size, strokeWidth]);
+        return React.createElement('span', {
+          ref,
+          style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+          ...props
+        });
+      };
+    };
+    const ChevronLeft = createLucideIcon('ChevronLeft');
+    const Menu = createLucideIcon('Menu');
+    const MapPin = createLucideIcon('MapPin');
+    const Ticket = createLucideIcon('Ticket');
+    const Bell = createLucideIcon('Bell');
+    const Share2 = createLucideIcon('Share2');
+    const Calendar = createLucideIcon('Calendar');
+    const Clock = createLucideIcon('Clock');
+    const Heart = createLucideIcon('Heart');
+    const Plus = createLucideIcon('Plus');
+    const Minus = createLucideIcon('Minus');
+    const Check = createLucideIcon('Check');
+    const Star = createLucideIcon('Star');
+    const ChevronRight = createLucideIcon('ChevronRight');
+    const X = createLucideIcon('X');
+    const Search = createLucideIcon('Search');
+    const Home = createLucideIcon('Home');
+    const Bookmark = createLucideIcon('Bookmark');
+    const User = createLucideIcon('User');
+    const Phone = createLucideIcon('Phone');
+    const Info = createLucideIcon('Info');
+    const Sparkles = createLucideIcon('Sparkles');
+    const Navigation = createLucideIcon('Navigation');
+
+    
+
+    const SCREENS = ['opening', 'home', 'intro', 'program', 'map', 'ticket', 'notice', 'schedule', 'share', 'ending'];
+
+    const programs = [
+      { id: 1, category: '공식초청', title: '개막 공연', date: '5.24 (일) 19:00', place: '공지천 수변무대', emoji: '🎭', liked: false, desc: '세계적인 마임 아티스트들의 화려한 개막 퍼포먼스' },
+      { id: 2, category: '공연', title: '스트리트 마임', date: '5.25 (월) ~ 5.31 (일)', place: '춘천 시내 일대', emoji: '🤸', liked: false, desc: '춘천 거리 곳곳에서 펼쳐지는 즉흥 마임 퍼포먼스' },
+      { id: 3, category: '체험', title: '마임 워크숍', date: '5.26 (화) 14:00', place: '축제 예술학교', emoji: '🎨', liked: false, desc: '전문 마임 아티스트와 함께하는 몸짓 표현 워크숍' },
+      { id: 4, category: '부대행사', title: '마임 포토존', date: '5.24 ~ 5.31', place: '춘천마임광장', emoji: '📸', liked: false, desc: '마임 캐릭터와 함께하는 특별 포토존 운영' },
+      { id: 5, category: '공식초청', title: '폐막 갈라쇼', date: '5.31 (일) 20:00', place: '공지천 수변무대', emoji: '✨', liked: false, desc: '축제의 대미를 장식하는 국제 마임 갈라 공연' },
+      { id: 6, category: '공연', title: '마임 서커스', date: '5.27 (수) 15:00', place: 'KT&G 상상마당', emoji: '🎪', liked: false, desc: '마임과 서커스가 결합된 환상적인 공연' },
+    ];
+
+    const notices = [
+      { id: 1, emoji: '🎁', title: '사전 예매 오픈 안내', date: '2026.04.01', content: '2026 춘천마임축제 공식 티켓 사전 예매가 시작됩니다.' },
+      { id: 2, emoji: '🙋', title: '자원봉사자 모집', date: '2026.03.20', content: '축제를 함께 만들어갈 자원봉사자를 모집합니다.' },
+      { id: 3, emoji: '📷', title: 'SNS 인증 이벤트', date: '2026.03.15', content: '#2026춘천마임축제 해시태그로 인증샷을 올려주세요!' },
+      { id: 4, emoji: '🚌', title: '셔틀버스 운행 안내', date: '2026.03.10', content: '서울-춘천 간 축제 셔틀버스 운행 일정을 안내합니다.' },
+    ];
+
+    const mapLocations = [
+      { id: 1, name: '공지천 수변무대', lat: 37.8726, lng: 127.7272, color: '#E8650A', emoji: '🎭', desc: '개막 공연 · 폐막 갈라쇼', address: '강원특별자치도 춘천시 근화동 공지천변' },
+      { id: 2, name: '춘천마임광장', lat: 37.8813, lng: 127.7298, color: '#F5A623', emoji: '📸', desc: '마임 포토존 · 부대행사', address: '강원특별자치도 춘천시 중앙로' },
+      { id: 3, name: '축제 예술학교', lat: 37.8775, lng: 127.7350, color: '#9B59B6', emoji: '🎨', desc: '마임 워크숍 · 체험 프로그램', address: '강원특별자치도 춘천시 소양로' },
+      { id: 4, name: 'KT&G 상상마당', lat: 37.8849, lng: 127.7215, color: '#3D9970', emoji: '🎪', desc: '마임 서커스 · 실내 공연', address: '강원특별자치도 춘천시 영서로 2854' },
+      { id: 5, name: '춘천 명동거리', lat: 37.8800, lng: 127.7260, color: '#E74C3C', emoji: '🤸', desc: '스트리트 마임 · 거리 공연', address: '강원특별자치도 춘천시 낙원동 명동거리' },
+    ];
+
+    // ── BOTTOM NAV ────────────────────────────────────────────────
+    // isInFrame: 폰 프레임 안에 있으면 true (absolute), 모바일 풀스크린이면 false (fixed)
+    const BottomNav = ({ current, onNavigate, isInFrame }) => {
+      const items = [
+        { id: 'home', icon: Home, label: '홈' },
+        { id: 'program', icon: Star, label: '프로그램' },
+        { id: 'map', icon: MapPin, label: '지도' },
+        { id: 'ticket', icon: Ticket, label: '티켓' },
+        { id: 'schedule', icon: Calendar, label: '일정' },
+      ];
+      return (
+        <div className={isInFrame ? 'bottom-nav-inner' : 'bottom-nav-fixed'}>
+          <div className="flex justify-around max-w-md mx-auto">
+            {items.map(item => (
+              <button key={item.id} onClick={() => onNavigate(item.id)}
+                      className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all"
+                      style={{ color: current === item.id ? '#E8650A' : '#9a7d6b' }}>
+                <item.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{item.label}</span>
+                {current === item.id && (
+                  <div className="w-1 h-1 rounded-full" style={{ background: '#E8650A' }} />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ── OPENING ───────────────────────────────────────────────────
+    const OpeningScreen = ({ onNext }) => {
+      const confettiItems = Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        delay: `${Math.random() * 3}s`,
+        color: ['#E8650A','#F5A623','#3D9970','#9B59B6','#E74C3C'][i % 5],
+        size: `${6 + Math.random() * 6}px`,
+      }));
+      return (
+        <div className="flex flex-col items-center justify-center relative overflow-hidden fade-in"
+             style={{ background: 'linear-gradient(160deg, #FDF6EC 0%, #FDEBD0 50%, #FAD7A0 100%)', minHeight: '100%', paddingTop: '3rem', paddingBottom: '3rem' }}>
+          {confettiItems.map(c => (
+            <div key={c.id} className="confetti absolute" style={{
+              left: c.left, top: '-20px', animationDelay: c.delay,
+              background: c.color, width: c.size, height: c.size,
+            }} />
+          ))}
+          <div className="relative z-10 flex flex-col items-center text-center px-8">
+            <div className="text-8xl mb-4" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}>🎭</div>
+            <div className="mb-2">
+              <p className="text-sm font-medium tracking-widest mb-1" style={{ color: '#E8650A' }}>CHUNCHEON MIME FESTIVAL</p>
+              <h1 className="text-5xl font-black leading-tight" style={{ color: '#3D2B1F' }}>
+                2026<br/>
+                <span className="gradient-text">춘천마임축제</span>
+              </h1>
+            </div>
+            <p className="text-lg font-medium mt-4 mb-2" style={{ color: '#6b5744' }}>몸짓으로 말하고,</p>
+            <p className="text-lg font-medium mb-8" style={{ color: '#6b5744' }}>마음으로 잇다</p>
+            <p className="text-sm mb-10 px-4 py-2 rounded-full font-medium"
+               style={{ background: 'rgba(232,101,10,0.1)', color: '#E8650A' }}>
+              📅 2026.5.24 (일) ~ 5.31 (일)
+            </p>
+            <button onClick={onNext} className="btn-primary" style={{ maxWidth: '280px' }}>
+              축제 시작하기 🎪
+            </button>
+            <div className="flex gap-2 mt-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full pulse-dot"
+                     style={{ background: i === 0 ? '#E8650A' : '#ddd', animationDelay: `${i * 0.3}s` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ── HOME ──────────────────────────────────────────────────────
+    const HomeScreen = ({ onNavigate, isInFrame }) => {
+      const menuItems = [
+        { icon: '📖', label: '축제소개', screen: 'intro' },
+        { icon: '🎭', label: '프로그램', screen: 'program' },
+        { icon: '📍', label: '지도', screen: 'map' },
+        { icon: '🎟️', label: '티켓', screen: 'ticket' },
+        { icon: '📢', label: '공지사항', screen: 'notice' },
+      ];
+      return (
+        <div className="fade-in" style={{ paddingBottom: '80px' }}>
+          <div className="px-5 pt-12 pb-4 flex justify-between items-center">
+            <div>
+              <p className="text-xs font-medium tracking-wider" style={{ color: '#E8650A' }}>CHUNCHEON MIME FESTIVAL</p>
+              <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>2026 춘천마임축제</h2>
+            </div>
+            <div className="flex gap-3">
+              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#f0e8df' }}>
+                <Bell className="w-4 h-4" style={{ color: '#E8650A' }} />
+              </button>
+              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#f0e8df' }}>
+                <Menu className="w-4 h-4" style={{ color: '#3D2B1F' }} />
+              </button>
+            </div>
+          </div>
+          <div className="mx-5 rounded-2xl overflow-hidden relative mb-6"
+               style={{ background: 'linear-gradient(135deg, #3D2B1F 0%, #6b3a1f 100%)', minHeight: '200px' }}>
+            <div className="p-6 relative z-10">
+              <span className="text-xs px-2 py-1 rounded-full font-medium mb-3 inline-block"
+                    style={{ background: 'rgba(232,101,10,0.8)', color: 'white' }}>D-day 카운트다운</span>
+              <h2 className="text-2xl font-black text-white leading-tight mb-1">
+                몸짓으로 말하고,<br/>마음으로 잇다
+              </h2>
+              <p className="text-sm mb-4" style={{ color: '#FAD7A0' }}>2026.5.24 - 5.31</p>
+              <button onClick={() => onNavigate('intro')}
+                      className="text-sm font-bold px-4 py-2 rounded-full"
+                      style={{ background: '#E8650A', color: 'white' }}>
+                자세히 보기 →
+              </button>
+            </div>
+            <div className="absolute right-4 bottom-4 text-6xl opacity-80">🎭</div>
+            <div className="absolute top-4 right-16 text-2xl opacity-50">🎈</div>
+            <div className="absolute top-8 right-8 text-xl opacity-40">✨</div>
+          </div>
+          <div className="mx-5 mb-6">
+            <div className="grid grid-cols-5 gap-2">
+              {menuItems.map((item) => (
+                <button key={item.screen} onClick={() => onNavigate(item.screen)}
+                        className="flex flex-col items-center gap-1 p-3 rounded-xl card-hover"
+                        style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-xs font-medium" style={{ color: '#3D2B1F' }}>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mx-5 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-base" style={{ color: '#3D2B1F' }}>🔥 주요 프로그램</h3>
+              <button onClick={() => onNavigate('program')} className="text-xs font-medium" style={{ color: '#E8650A' }}>
+                전체보기 →
+              </button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+              {programs.slice(0, 4).map(p => (
+                <div key={p.id} className="flex-shrink-0 w-44 rounded-xl p-4 card-hover"
+                     style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div className="text-3xl mb-2">{p.emoji}</div>
+                  <p className="text-xs font-medium mb-1 px-2 py-0.5 rounded-full inline-block"
+                     style={{ background: '#fff3e8', color: '#E8650A' }}>{p.category}</p>
+                  <h4 className="font-bold text-sm mt-1" style={{ color: '#3D2B1F' }}>{p.title}</h4>
+                  <p className="text-xs mt-1" style={{ color: '#9a7d6b' }}>{p.date}</p>
+                  <p className="text-xs" style={{ color: '#9a7d6b' }}>📍 {p.place}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mx-5 mb-4">
+            <button onClick={() => onNavigate('ticket')} className="btn-primary">
+              🎟️ 지금 바로 예매하기
+            </button>
+          </div>
+          <BottomNav current="home" onNavigate={onNavigate} isInFrame={isInFrame} />
+        </div>
+      );
+    };
+
+    // ── INTRO ─────────────────────────────────────────────────────
+    const IntroScreen = ({ onBack }) => {
+      const [activeTab, setActiveTab] = React.useState('history');
+      const tabs = [
+        { id: 'history', label: '축제 역사', emoji: '📜' },
+        { id: 'vision', label: '비전', emoji: '🌟' },
+        { id: 'highlight', label: '하이라이트', emoji: '✨' },
+      ];
+      return (
+        <div className="fade-in" style={{ paddingBottom: '2rem' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center gap-3">
+            <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: '#f0e8df' }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+            </button>
+            <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>축제 소개</h2>
+          </div>
+          <div className="mx-5 rounded-2xl overflow-hidden mb-5"
+               style={{ background: 'linear-gradient(135deg, #2C1810 0%, #5D3A1A 100%)', padding: '2rem' }}>
+            <p className="text-xs font-medium tracking-wider mb-2" style={{ color: '#F5A623' }}>세계 3대 마임축제</p>
+            <h1 className="text-3xl font-black text-white leading-tight mb-3">춘천마임축제</h1>
+            <p className="text-sm leading-relaxed" style={{ color: '#FAD7A0' }}>예술로 소통하고,<br/>몸짓으로 세상을 잇는 축제!</p>
+            <div className="flex gap-4 mt-4">
+              {[['35','회 개최'],['20+','개국 참가'],['50만','관람객']].map(([num, label]) => (
+                <div key={label} className="text-center">
+                  <p className="text-2xl font-black" style={{ color: '#F5A623' }}>{num}</p>
+                  <p className="text-xs" style={{ color: '#FAD7A0' }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mx-5 flex gap-2 mb-5">
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                      className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+                      style={{
+                        background: activeTab === tab.id ? 'linear-gradient(135deg, #E8650A, #F5A623)' : '#f0e8df',
+                        color: activeTab === tab.id ? 'white' : '#6b5744'
+                      }}>
+                {tab.emoji} {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="mx-5 slide-in">
+            {activeTab === 'history' && (
+              <div className="space-y-3">
+                {[
+                  { year: '1989', desc: '춘천마임축제 창설, 국내 최초 마임 전문 축제' },
+                  { year: '1999', desc: '국제 마임 축제로 성장, 해외 아티스트 참가 시작' },
+                  { year: '2010', desc: '세계 3대 마임축제 선정, 글로벌 명성 확립' },
+                  { year: '2026', desc: '35회 개최, 새로운 도약과 미래를 향한 비전 제시' },
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-xl"
+                       style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                         style={{ background: 'linear-gradient(135deg, #E8650A, #F5A623)' }}>
+                      <span className="text-xs font-black text-white">{item.year}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed flex-1 self-center" style={{ color: '#4a3728' }}>{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeTab === 'vision' && (
+              <div className="space-y-4">
+                {[
+                  { icon: '🌍', title: '세계와 소통', desc: '20개국 이상의 마임 아티스트가 한자리에 모여 언어를 초월한 예술로 소통합니다.' },
+                  { icon: '🎭', title: '몸짓의 예술', desc: '말 없이도 전달되는 순수한 몸짓 예술의 아름다움을 경험하세요.' },
+                  { icon: '🌿', title: '자연과 예술', desc: '아름다운 춘천의 자연 속에서 펼쳐지는 특별한 야외 공연을 즐기세요.' },
+                ].map((item, i) => (
+                  <div key={i} className="p-5 rounded-xl"
+                       style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div className="text-4xl mb-3">{item.icon}</div>
+                    <h4 className="font-bold mb-2" style={{ color: '#3D2B1F' }}>{item.title}</h4>
+                    <p className="text-sm leading-relaxed" style={{ color: '#6b5744' }}>{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeTab === 'highlight' && (
+              <div className="space-y-3">
+                {[
+                  { emoji: '🎪', title: '개막 퍼포먼스', sub: '공지천 수변무대에서 펼쳐지는 화려한 개막 공연' },
+                  { emoji: '🤸', title: '스트리트 마임', sub: '춘천 시내 곳곳에서 만나는 즉흥 마임 퍼포먼스' },
+                  { emoji: '🎨', title: '마임 워크숍', sub: '전문 아티스트와 함께하는 체험 프로그램' },
+                  { emoji: '🌙', title: '야간 갈라쇼', sub: '별빛 아래 펼쳐지는 낭만적인 야간 공연' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-xl card-hover"
+                       style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <span className="text-3xl">{item.emoji}</span>
+                    <div>
+                      <h4 className="font-bold text-sm" style={{ color: '#3D2B1F' }}>{item.title}</h4>
+                      <p className="text-xs mt-0.5" style={{ color: '#9a7d6b' }}>{item.sub}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 ml-auto" style={{ color: '#E8650A' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ── PROGRAM ───────────────────────────────────────────────────
+    const ProgramScreen = ({ onBack }) => {
+      const [activeFilter, setActiveFilter] = React.useState('전체');
+      const [likedIds, setLikedIds] = React.useState([]);
+      const filters = ['전체', '공식초청', '공연', '체험', '부대행사'];
+      const filtered = activeFilter === '전체' ? programs : programs.filter(p => p.category === activeFilter);
+      const toggleLike = (id) => setLikedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+      return (
+        <div className="fade-in" style={{ paddingBottom: '2rem' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center gap-3">
+            <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: '#f0e8df' }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+            </button>
+            <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>프로그램</h2>
+          </div>
+          <div className="px-5 mb-4 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {filters.map(f => (
+              <button key={f} onClick={() => setActiveFilter(f)}
+                      className={`tag-filter flex-shrink-0 ${activeFilter === f ? 'active' : ''}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="px-5 space-y-3 pb-8">
+            {filtered.map(p => (
+              <div key={p.id} className="p-4 rounded-xl card-hover"
+                   style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0"
+                       style={{ background: 'linear-gradient(135deg, #fff3e8, #FDEBD0)', fontSize: '2rem' }}>
+                    {p.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{ background: '#fff3e8', color: '#E8650A' }}>{p.category}</span>
+                      <button onClick={() => toggleLike(p.id)}>
+                        <Heart className="w-4 h-4"
+                               style={{ color: likedIds.includes(p.id) ? '#E8650A' : '#ccc',
+                                        fill: likedIds.includes(p.id) ? '#E8650A' : 'none' }} />
+                      </button>
+                    </div>
+                    <h4 className="font-bold" style={{ color: '#3D2B1F' }}>{p.title}</h4>
+                    <p className="text-xs mt-1" style={{ color: '#9a7d6b' }}>
+                      <Clock className="w-3 h-3 inline mr-1" />{p.date}
+                    </p>
+                    <p className="text-xs" style={{ color: '#9a7d6b' }}>
+                      <MapPin className="w-3 h-3 inline mr-1" />{p.place}
+                    </p>
+                    <p className="text-xs mt-2 leading-relaxed" style={{ color: '#6b5744' }}>{p.desc}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ── MAP (Leaflet 실제 지도) ───────────────────────────────────
+    const MapScreen = ({ onBack, onNavigate, isInFrame }) => {
+      const [selected, setSelected] = React.useState(null);
+      const [mapReady, setMapReady] = React.useState(false);
+      const mapDivRef = React.useRef(null);
+      const leafletMapRef = React.useRef(null);
+      const markersRef = React.useRef([]);
+
+      React.useEffect(() => {
+        if (leafletMapRef.current) return;
+
+        const timer = setTimeout(() => {
+          const container = mapDivRef.current;
+          if (!container) return;
+
+          try {
+            const map = L.map(container, {
+              center: [37.8790, 127.7270],
+              zoom: 14,
+              zoomControl: true,
+              scrollWheelZoom: false,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+              maxZoom: 19,
+            }).addTo(map);
+
+            leafletMapRef.current = map;
+
+            const createCustomIcon = (loc) => {
+              const html = `
+                <div style="
+                  width:40px;height:40px;
+                  background:${loc.color};
+                  border-radius:50% 50% 50% 0;
+                  transform:rotate(-45deg);
+                  display:flex;align-items:center;justify-content:center;
+                  box-shadow:0 4px 12px rgba(0,0,0,0.35);
+                  border:3px solid white;
+                ">
+                  <span style="transform:rotate(45deg);font-size:16px;line-height:1;">${loc.emoji}</span>
+                </div>
+                <div style="
+                  width:8px;height:8px;
+                  background:${loc.color};
+                  border-radius:50%;
+                  margin:0 auto;margin-top:-2px;
+                  box-shadow:0 2px 6px rgba(0,0,0,0.3);
+                "></div>
+              `;
+              return L.divIcon({
+                html,
+                className: 'custom-marker-icon',
+                iconSize: [40, 52],
+                iconAnchor: [20, 52],
+                popupAnchor: [0, -54],
+              });
+            };
+
+            mapLocations.forEach((loc) => {
+              const marker = L.marker([loc.lat, loc.lng], { icon: createCustomIcon(loc) })
+                .addTo(map)
+                .bindPopup(`
+                  <div style="font-family:'Noto Sans KR',sans-serif;min-width:160px;">
+                    <div style="font-size:1.4rem;margin-bottom:4px;">${loc.emoji}</div>
+                    <div style="font-weight:800;font-size:0.9rem;color:white;margin-bottom:4px;">${loc.name}</div>
+                    <div style="font-size:0.75rem;color:#FAD7A0;margin-bottom:6px;">${loc.desc}</div>
+                    <div style="
+                      display:inline-block;background:${loc.color};color:white;
+                      font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:9999px;
+                    ">위치 보기</div>
+                  </div>
+                `, { maxWidth: 220 });
+
+              marker.on('click', () => setSelected(loc));
+              markersRef.current.push(marker);
+            });
+
+            L.circle([37.8790, 127.7270], {
+              color: '#E8650A',
+              fillColor: '#E8650A',
+              fillOpacity: 0.05,
+              weight: 2,
+              dashArray: '6, 6',
+              radius: 700,
+            }).addTo(map);
+
+            setMapReady(true);
+            setTimeout(() => map.invalidateSize(), 100);
+
+          } catch (e) {
+            console.error('Leaflet 초기화 오류:', e);
+          }
+        }, 200);
+
+        return () => {
+          clearTimeout(timer);
+          if (leafletMapRef.current) {
+            leafletMapRef.current.remove();
+            leafletMapRef.current = null;
+            markersRef.current = [];
+          }
+        };
+      }, []);
+
+      React.useEffect(() => {
+        if (!leafletMapRef.current || !selected) return;
+        leafletMapRef.current.flyTo([selected.lat, selected.lng], 16, { duration: 1.2 });
+        const idx = mapLocations.findIndex(l => l.id === selected.id);
+        if (markersRef.current[idx]) {
+          setTimeout(() => markersRef.current[idx].openPopup(), 800);
+        }
+      }, [selected]);
+
+      return (
+        <div className="fade-in" style={{ paddingBottom: '80px' }}>
+          {/* 헤더 */}
+          <div className="px-5 pt-12 pb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack}
+                      className="w-9 h-9 rounded-full flex items-center justify-center"
+                      style={{ background: '#f0e8df' }}>
+                <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+              </button>
+              <div>
+                <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>행사 지도</h2>
+                <p className="text-xs" style={{ color: '#9a7d6b' }}>강원특별자치도 춘천시</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full"
+                 style={{ background: '#fff3e8' }}>
+              <div className="w-2 h-2 rounded-full pulse-dot" style={{ background: '#E8650A' }} />
+              <span className="text-xs font-bold" style={{ color: '#E8650A' }}>실시간 지도</span>
+            </div>
+          </div>
+
+          {/* 안내 배너 */}
+          <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl flex items-center gap-2"
+               style={{ background: 'linear-gradient(135deg, #E8650A, #F5A623)' }}>
+            <Navigation className="w-4 h-4 text-white flex-shrink-0" />
+            <p className="text-xs text-white font-medium">
+              마커를 클릭하면 공연장 정보를 확인할 수 있어요
+            </p>
+          </div>
+
+          {/* 지도 컨테이너 */}
+          <div className="mx-5 mb-4 rounded-2xl overflow-hidden"
+               style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '3px solid white', position: 'relative' }}>
+            {!mapReady && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 rounded-2xl"
+                   style={{ background: '#f0e8df', minHeight: '300px' }}>
+                <div className="text-4xl mb-3">🗺️</div>
+                <p className="text-sm font-medium" style={{ color: '#E8650A' }}>지도를 불러오는 중...</p>
+              </div>
+            )}
+            <div
+              ref={mapDivRef}
+              style={{ width: '100%', height: '300px', borderRadius: '1rem' }}
+            />
+          </div>
+
+          {/* 선택된 장소 상세 */}
+          {selected && (
+            <div className="mx-5 mb-4 p-4 rounded-xl slide-in"
+                 style={{
+                   background: 'white',
+                   boxShadow: '0 4px 15px rgba(232,101,10,0.2)',
+                   borderLeft: `4px solid ${selected.color}`
+                 }}>
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                     style={{ background: selected.color + '20' }}>
+                  {selected.emoji}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold" style={{ color: '#3D2B1F' }}>{selected.name}</h4>
+                  <p className="text-xs mt-0.5 font-medium" style={{ color: selected.color }}>{selected.desc}</p>
+                  <p className="text-xs mt-1" style={{ color: '#9a7d6b' }}>
+                    <MapPin className="w-3 h-3 inline mr-1" />{selected.address}
+                  </p>
+                </div>
+                <button onClick={() => setSelected(null)}
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: '#f0e8df' }}>
+                  <X className="w-3 h-3" style={{ color: '#9a7d6b' }} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 장소 목록 */}
+          <div className="px-5 pb-4">
+            <h3 className="font-bold mb-3 text-sm" style={{ color: '#3D2B1F' }}>
+              📍 주요 행사 장소 ({mapLocations.length}곳)
+            </h3>
+            <div className="space-y-2">
+              {mapLocations.map(loc => (
+                <button key={loc.id}
+                        onClick={() => setSelected(selected?.id === loc.id ? null : loc)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all"
+                        style={{
+                          background: selected?.id === loc.id ? '#fff3e8' : 'white',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                          border: selected?.id === loc.id ? `1.5px solid ${loc.color}` : '1.5px solid transparent',
+                          transform: selected?.id === loc.id ? 'scale(1.01)' : 'scale(1)',
+                        }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+                       style={{ background: loc.color + '20', border: `2px solid ${loc.color}` }}>
+                    {loc.emoji}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-sm" style={{ color: '#3D2B1F' }}>{loc.name}</p>
+                    <p className="text-xs" style={{ color: '#9a7d6b' }}>{loc.desc}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full" style={{ background: loc.color }} />
+                    <ChevronRight className="w-4 h-4" style={{ color: '#ccc' }} />
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 text-center">
+              <p className="text-xs" style={{ color: '#bba99a' }}>
+                🗺️ 지도 데이터 © OpenStreetMap contributors
+              </p>
+            </div>
+          </div>
+
+          <BottomNav current="map" onNavigate={onNavigate} isInFrame={isInFrame} />
+        </div>
+      );
+    };
+
+    // ── TICKET ────────────────────────────────────────────────────
+    const TicketScreen = ({ onBack, onNavigate, isInFrame }) => {
+      const [selectedProgram, setSelectedProgram] = React.useState(programs[0]);
+      const [qty, setQty] = React.useState({ adult: 2, youth: 0, child: 0 });
+      const [booked, setBooked] = React.useState(false);
+      const prices = { adult: 20000, youth: 15000, child: 10000 };
+      const labels = { adult: '일반', youth: '청소년', child: '어린이' };
+      const total = Object.entries(qty).reduce((sum, [k, v]) => sum + prices[k] * v, 0);
+      return (
+        <div className="fade-in" style={{ paddingBottom: '80px' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center gap-3">
+            <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: '#f0e8df' }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+            </button>
+            <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>티켓 예매</h2>
+          </div>
+          {booked ? (
+            <div className="px-5 flex flex-col items-center justify-center" style={{ minHeight: '60vh' }}>
+              <div className="text-6xl mb-4">🎉</div>
+              <h3 className="text-xl font-black mb-2" style={{ color: '#3D2B1F' }}>예매 완료!</h3>
+              <p className="text-sm text-center mb-6" style={{ color: '#6b5744' }}>
+                {selectedProgram.title} 티켓이<br/>성공적으로 예매되었습니다.
+              </p>
+              <div className="w-full p-5 rounded-2xl mb-6"
+                   style={{ background: 'white', boxShadow: '0 4px 20px rgba(232,101,10,0.15)', border: '2px dashed #E8650A' }}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-2xl">{selectedProgram.emoji}</span>
+                  <span className="text-xs px-2 py-1 rounded-full font-bold"
+                        style={{ background: '#E8650A', color: 'white' }}>예매완료</span>
+                </div>
+                <h4 className="font-black text-lg mb-1" style={{ color: '#3D2B1F' }}>{selectedProgram.title}</h4>
+                <p className="text-sm" style={{ color: '#6b5744' }}>{selectedProgram.date}</p>
+                <p className="text-sm" style={{ color: '#6b5744' }}>📍 {selectedProgram.place}</p>
+                <div className="mt-3 pt-3" style={{ borderTop: '1px dashed #e0d0c0' }}>
+                  <p className="text-lg font-black" style={{ color: '#E8650A' }}>총 {total.toLocaleString()}원</p>
+                </div>
+              </div>
+              <button onClick={() => setBooked(false)} className="btn-primary">다른 공연 예매하기</button>
+            </div>
+          ) : (
+            <div className="px-5 pb-4">
+              <h3 className="font-bold mb-3" style={{ color: '#3D2B1F' }}>공연 선택</h3>
+              <div className="space-y-2 mb-5">
+                {programs.slice(0, 3).map(p => (
+                  <button key={p.id} onClick={() => setSelectedProgram(p)}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl text-left"
+                          style={{
+                            background: selectedProgram.id === p.id ? '#fff3e8' : 'white',
+                            border: selectedProgram.id === p.id ? '2px solid #E8650A' : '2px solid transparent',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                          }}>
+                    <span className="text-2xl">{p.emoji}</span>
+                    <div className="flex-1">
+                      <p className="font-bold text-sm" style={{ color: '#3D2B1F' }}>{p.title}</p>
+                      <p className="text-xs" style={{ color: '#9a7d6b' }}>{p.date} · {p.place}</p>
+                    </div>
+                    {selectedProgram.id === p.id && <Check className="w-5 h-5" style={{ color: '#E8650A' }} />}
+                  </button>
+                ))}
+              </div>
+              <h3 className="font-bold mb-3" style={{ color: '#3D2B1F' }}>수량 선택</h3>
+              <div className="p-4 rounded-xl mb-5 space-y-3"
+                   style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                {Object.entries(qty).map(([key, val]) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm" style={{ color: '#3D2B1F' }}>{labels[key]}</p>
+                      <p className="text-xs" style={{ color: '#9a7d6b' }}>{prices[key].toLocaleString()}원</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setQty(q => ({ ...q, [key]: Math.max(0, q[key] - 1) }))}
+                              className="w-8 h-8 rounded-full flex items-center justify-center"
+                              style={{ background: '#f0e8df', color: '#E8650A' }}>
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-6 text-center font-bold" style={{ color: '#3D2B1F' }}>{val}</span>
+                      <button onClick={() => setQty(q => ({ ...q, [key]: q[key] + 1 }))}
+                              className="w-8 h-8 rounded-full flex items-center justify-center"
+                              style={{ background: '#E8650A', color: 'white' }}>
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between items-center p-4 rounded-xl mb-5"
+                   style={{ background: '#fff3e8' }}>
+                <span className="font-bold" style={{ color: '#3D2B1F' }}>합계</span>
+                <span className="text-xl font-black" style={{ color: '#E8650A' }}>{total.toLocaleString()}원</span>
+              </div>
+              <button onClick={() => total > 0 && setBooked(true)} className="btn-primary"
+                      style={{ opacity: total === 0 ? 0.5 : 1 }}>
+                🎟️ 예매하기
+              </button>
+            </div>
+          )}
+          <BottomNav current="ticket" onNavigate={onNavigate} isInFrame={isInFrame} />
+        </div>
+      );
+    };
+
+    // ── NOTICE ────────────────────────────────────────────────────
+    const NoticeScreen = ({ onBack }) => {
+      const [expanded, setExpanded] = React.useState(null);
+      return (
+        <div className="fade-in" style={{ paddingBottom: '2rem' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                      style={{ background: '#f0e8df' }}>
+                <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+              </button>
+              <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>공지사항</h2>
+            </div>
+          </div>
+          <div className="mx-5 p-4 rounded-xl mb-5 flex items-center gap-3"
+               style={{ background: 'linear-gradient(135deg, #E8650A, #F5A623)' }}>
+            <span className="text-2xl">📢</span>
+            <div>
+              <p className="font-bold text-white text-sm">다양한 소식과 이벤트 참여!</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.8)' }}>최신 공지를 확인하세요</p>
+            </div>
+          </div>
+          <div className="px-5 space-y-3 pb-8">
+            {notices.map(n => (
+              <div key={n.id} className="rounded-xl overflow-hidden"
+                   style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <button className="w-full flex items-center gap-4 p-4 text-left"
+                        onClick={() => setExpanded(expanded === n.id ? null : n.id)}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
+                       style={{ background: '#fff3e8' }}>
+                    {n.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-sm" style={{ color: '#3D2B1F' }}>{n.title}</h4>
+                    <p className="text-xs mt-0.5" style={{ color: '#9a7d6b' }}>{n.date}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 flex-shrink-0"
+                                style={{ color: '#E8650A',
+                                         transform: expanded === n.id ? 'rotate(90deg)' : 'none',
+                                         transition: 'transform 0.3s' }} />
+                </button>
+                {expanded === n.id && (
+                  <div className="px-4 pb-4 slide-in">
+                    <div style={{ borderTop: '1px solid #f0e8df', paddingTop: '12px' }}>
+                      <p className="text-sm leading-relaxed" style={{ color: '#6b5744' }}>{n.content}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ── SCHEDULE ──────────────────────────────────────────────────
+    const ScheduleScreen = ({ onBack, onNavigate, isInFrame }) => {
+      const days = [24, 25, 26, 27, 28, 29, 30, 31];
+      const [selectedDay, setSelectedDay] = React.useState(25);
+      const [savedIds, setSavedIds] = React.useState([1, 3]);
+      const dayPrograms = {
+        24: [{ id: 1, title: '개막 공연', time: '19:00', place: '공지천 수변무대', emoji: '🎭' }],
+        25: [
+          { id: 2, title: '스트리트 마임', time: '16:00', place: '춘천 명동거리', emoji: '🤸' },
+          { id: 5, title: '마임 토크 콘서트', time: '19:30', place: '춘천마임광장', emoji: '🎤' },
+        ],
+        26: [
+          { id: 3, title: '마임 워크숍', time: '14:00', place: '축제 예술학교', emoji: '🎨' },
+          { id: 6, title: '마임 서커스', time: '18:00', place: 'KT&G 상상마당', emoji: '🎪' },
+        ],
+        27: [{ id: 7, title: '국제 마임 경연', time: '15:00', place: '공지천 수변무대', emoji: '🏆' }],
+        28: [{ id: 8, title: '어린이 마임 체험', time: '11:00', place: '축제 예술학교', emoji: '👶' }],
+        29: [{ id: 9, title: '야외 마임 투어', time: '14:00', place: '춘천 시내', emoji: '🚶' }],
+        30: [{ id: 10, title: '마임 갈라 리허설', time: '16:00', place: '공지천 수변무대', emoji: '🌟' }],
+        31: [{ id: 11, title: '폐막 갈라쇼', time: '20:00', place: '공지천 수변무대', emoji: '✨' }],
+      };
+      const toggleSave = (id) => setSavedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+      return (
+        <div className="fade-in" style={{ paddingBottom: '80px' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center gap-3">
+            <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: '#f0e8df' }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+            </button>
+            <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>나의 일정</h2>
+          </div>
+          <div className="px-5 mb-4">
+            <p className="text-sm font-bold mb-3" style={{ color: '#9a7d6b' }}>5월 · 2026</p>
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+              {days.map(d => (
+                <button key={d} onClick={() => setSelectedDay(d)}
+                        className="flex-shrink-0 w-12 h-14 rounded-xl flex flex-col items-center justify-center transition-all"
+                        style={{
+                          background: selectedDay === d ? 'linear-gradient(135deg, #E8650A, #F5A623)' : 'white',
+                          boxShadow: selectedDay === d ? '0 4px 12px rgba(232,101,10,0.4)' : '0 2px 6px rgba(0,0,0,0.06)',
+                          fontWeight: selectedDay === d ? '700' : '400',
+                        }}>
+                  <span className="text-xs" style={{ color: selectedDay === d ? 'rgba(255,255,255,0.8)' : '#9a7d6b' }}>
+                    {['일','월','화','수','목','금','토','일'][days.indexOf(d)]}
+                  </span>
+                  <span className="text-base font-bold" style={{ color: selectedDay === d ? 'white' : '#3D2B1F' }}>{d}</span>
+                  {(dayPrograms[d] || []).length > 0 && (
+                    <div className="w-1.5 h-1.5 rounded-full mt-0.5"
+                         style={{ background: selectedDay === d ? 'rgba(255,255,255,0.8)' : '#E8650A' }} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-5 space-y-3 pb-4">
+            <h3 className="font-bold text-sm" style={{ color: '#3D2B1F' }}>
+              5월 {selectedDay}일 프로그램 ({(dayPrograms[selectedDay] || []).length}개)
+            </h3>
+            {(dayPrograms[selectedDay] || []).length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-3">😴</div>
+                <p className="text-sm" style={{ color: '#9a7d6b' }}>이 날은 프로그램이 없습니다.</p>
+              </div>
+            ) : (
+              (dayPrograms[selectedDay] || []).map(p => (
+                <div key={p.id} className="flex items-center gap-4 p-4 rounded-xl card-hover"
+                     style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div className="text-3xl">{p.emoji}</div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-sm" style={{ color: '#3D2B1F' }}>{p.title}</h4>
+                    <p className="text-xs mt-0.5" style={{ color: '#9a7d6b' }}>
+                      <Clock className="w-3 h-3 inline mr-1" />5월 {selectedDay}일 {p.time}
+                    </p>
+                    <p className="text-xs" style={{ color: '#9a7d6b' }}>
+                      <MapPin className="w-3 h-3 inline mr-1" />{p.place}
+                    </p>
+                  </div>
+                  <button onClick={() => toggleSave(p.id)}>
+                    <Bookmark className="w-5 h-5"
+                              style={{ color: savedIds.includes(p.id) ? '#E8650A' : '#ccc',
+                                       fill: savedIds.includes(p.id) ? '#E8650A' : 'none' }} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+          <BottomNav current="schedule" onNavigate={onNavigate} isInFrame={isInFrame} />
+        </div>
+      );
+    };
+
+    // ── SHARE ─────────────────────────────────────────────────────
+    const ShareScreen = ({ onBack, onNext }) => {
+      const [copied, setCopied] = React.useState(false);
+      const socials = [
+        { name: 'Instagram', emoji: '📸', color: '#E1306C', bg: '#fce4ec' },
+        { name: 'Facebook', emoji: '👍', color: '#1877F2', bg: '#e3f2fd' },
+        { name: 'X (Twitter)', emoji: '🐦', color: '#1DA1F2', bg: '#e1f5fe' },
+        { name: 'KakaoTalk', emoji: '💬', color: '#F5C000', bg: '#fffde7' },
+      ];
+      const handleCopy = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+      return (
+        <div className="fade-in" style={{ paddingBottom: '2rem' }}>
+          <div className="px-5 pt-12 pb-4 flex items-center gap-3">
+            <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: '#f0e8df' }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: '#3D2B1F' }} />
+            </button>
+            <h2 className="text-lg font-bold" style={{ color: '#3D2B1F' }}>공유하기</h2>
+          </div>
+          <div className="mx-5 rounded-2xl overflow-hidden mb-6"
+               style={{ background: 'linear-gradient(135deg, #3D2B1F, #6b3a1f)', padding: '2rem', textAlign: 'center' }}>
+            <div className="text-6xl mb-3">🎭</div>
+            <p className="text-xs font-medium tracking-widest mb-1" style={{ color: '#F5A623' }}>CHUNCHEON MIME FESTIVAL</p>
+            <h2 className="text-2xl font-black text-white mb-2">2026 춘천마임축제</h2>
+            <p className="text-sm mb-3" style={{ color: '#FAD7A0' }}>몸짓으로 말하고, 마음으로 잇다</p>
+            <p className="text-xs px-3 py-1.5 rounded-full inline-block font-medium"
+               style={{ background: 'rgba(232,101,10,0.3)', color: '#FAD7A0' }}>
+              2026.5.24 (일) ~ 5.31 (일)
+            </p>
+          </div>
+          <div className="mx-5 p-4 rounded-xl mb-5 text-center"
+               style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p className="text-lg font-black mb-1" style={{ color: '#E8650A' }}>#2026춘천마임축제</p>
+            <p className="text-sm" style={{ color: '#6b5744' }}>함께하고, 공유하고!</p>
+            <button onClick={handleCopy}
+                    className="mt-3 px-4 py-2 rounded-full text-sm font-medium transition-all"
+                    style={{ background: copied ? '#3D9970' : '#f0e8df', color: copied ? 'white' : '#E8650A' }}>
+              {copied ? '✓ 복사됨!' : '해시태그 복사'}
+            </button>
+          </div>
+          <div className="px-5 mb-6">
+            <h3 className="font-bold mb-3" style={{ color: '#3D2B1F' }}>SNS 공유</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {socials.map(s => (
+                <button key={s.name} className="flex items-center gap-3 p-4 rounded-xl card-hover"
+                        style={{ background: s.bg, border: `1px solid ${s.color}20` }}>
+                  <span className="text-2xl">{s.emoji}</span>
+                  <span className="font-bold text-sm" style={{ color: s.color }}>{s.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mx-5 mb-8">
+            <button onClick={onNext} className="btn-primary">🎉 축제 마무리하기</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ── ENDING ────────────────────────────────────────────────────
+    const EndingScreen = ({ onRestart }) => {
+      const confettiItems = Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        delay: `${Math.random() * 4}s`,
+        color: ['#E8650A','#F5A623','#3D9970','#9B59B6','#E74C3C','#FAD7A0'][i % 6],
+        size: `${6 + Math.random() * 8}px`,
+      }));
+      return (
+        <div className="flex flex-col items-center justify-center relative overflow-hidden fade-in"
+             style={{ background: 'linear-gradient(160deg, #FDF6EC 0%, #FDEBD0 40%, #FAD7A0 100%)', minHeight: '100%', paddingTop: '3rem', paddingBottom: '3rem' }}>
+          {confettiItems.map(c => (
+            <div key={c.id} className="confetti absolute" style={{
+              left: c.left, top: '-20px', animationDelay: c.delay,
+              background: c.color, width: c.size, height: c.size,
+            }} />
+          ))}
+          <div className="relative z-10 flex flex-col items-center text-center px-8">
+            <div className="flex gap-2 mb-4 text-4xl"><span>🎈</span><span>🎭</span><span>🎈</span></div>
+            <p className="text-xs font-medium tracking-widest mb-2" style={{ color: '#E8650A' }}>CHUNCHEON MIME FESTIVAL</p>
+            <h1 className="text-5xl font-black leading-tight mb-4" style={{ color: '#3D2B1F' }}>
+              2026<br/><span className="gradient-text">춘천마임축제</span>
+            </h1>
+            <p className="text-xl font-bold mb-2" style={{ color: '#3D2B1F' }}>몸짓으로 말하고,</p>
+            <p className="text-xl font-bold mb-6" style={{ color: '#3D2B1F' }}>마음으로 잇다</p>
+            <div className="px-5 py-3 rounded-full mb-8 font-bold"
+                 style={{ background: 'linear-gradient(135deg, #E8650A, #F5A623)', color: 'white' }}>
+              📅 2026.5.24 ~ 5.31
+            </div>
+            <div className="space-y-3 w-full max-w-xs">
+              <button onClick={onRestart} className="btn-primary">🎪 처음으로 돌아가기</button>
+              <p className="text-sm font-medium" style={{ color: '#9a7d6b' }}>2026년, 춘천에서 만나요! 🙌</p>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ── MAIN APP ──────────────────────────────────────────────────
+    const App = () => {
+      const [screen, setScreen] = React.useState('opening');
+      const navigate = (s) => setScreen(s);
+
+      const renderScreen = (isInFrame) => {
+        switch (screen) {
+          case 'opening':  return <OpeningScreen onNext={() => navigate('home')} />;
+          case 'home':     return <HomeScreen onNavigate={navigate} isInFrame={isInFrame} />;
+          case 'intro':    return <IntroScreen onBack={() => navigate('home')} />;
+          case 'program':  return <ProgramScreen onBack={() => navigate('home')} />;
+          case 'map':      return <MapScreen onBack={() => navigate('home')} onNavigate={navigate} isInFrame={isInFrame} />;
+          case 'ticket':   return <TicketScreen onBack={() => navigate('home')} onNavigate={navigate} isInFrame={isInFrame} />;
+          case 'notice':   return <NoticeScreen onBack={() => navigate('home')} />;
+          case 'schedule': return <ScheduleScreen onBack={() => navigate('home')} onNavigate={navigate} isInFrame={isInFrame} />;
+          case 'share':    return <ShareScreen onBack={() => navigate('home')} onNext={() => navigate('ending')} />;
+          case 'ending':   return <EndingScreen onRestart={() => navigate('opening')} />;
+          default:         return <HomeScreen onNavigate={navigate} isInFrame={isInFrame} />;
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center"
+             style={{ background: 'linear-gradient(135deg, #1a0f0a 0%, #2d1a0e 50%, #1a0f0a 100%)' }}>
+
+          {/* ── 데스크탑: 폰 프레임 ── */}
+          <div className="hidden md:flex flex-col items-center">
+            {/* 폰 외곽 껍데기 */}
+            <div style={{
+              width: '390px',
+              height: '844px',
+              background: '#1a0f0a',
+              borderRadius: '2.5rem',
+              padding: '12px',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(255,255,255,0.08)',
+              position: 'relative',
+            }}>
+              {/* 노치 */}
+              <div style={{
+                position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)',
+                width: '120px', height: '28px', background: '#1a0f0a',
+                borderRadius: '0 0 1rem 1rem', zIndex: 100,
+              }} />
+              {/* 실제 화면 영역 — relative로 네비바 absolute 기준점 */}
+              <div style={{
+                width: '100%',
+                height: '100%',
+                background: '#FDF6EC',
+                borderRadius: '2rem',
+                overflow: 'hidden',
+                position: 'relative',   /* ← 핵심: BottomNav absolute의 기준 */
+              }}>
+                {/* 스크롤 가능한 콘텐츠 영역 */}
+                <div className="phone-scroll-area" style={{ height: '100%' }}>
+                  {renderScreen(true)}
+                </div>
+              </div>
+            </div>
+
+            {/* 화면 전환 점 */}
+            <div className="flex justify-center gap-2 mt-6">
+              {SCREENS.map(s => (
+                <button key={s} onClick={() => navigate(s)}
+                        className="w-2 h-2 rounded-full transition-all"
+                        style={{
+                          background: screen === s ? '#E8650A' : 'rgba(255,255,255,0.3)',
+                          transform: screen === s ? 'scale(1.4)' : 'scale(1)'
+                        }} />
+              ))}
+            </div>
+            <p className="text-center text-xs mt-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              하단 점을 클릭해 화면을 이동하세요
+            </p>
+          </div>
+
+          {/* ── 모바일: 풀스크린 ── */}
+          <div className="md:hidden w-full min-h-screen" style={{ background: '#FDF6EC' }}>
+            {renderScreen(false)}
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
